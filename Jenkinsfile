@@ -9,7 +9,7 @@ pipeline {
         stage('Setup') {
             steps {
                 sh 'python --version'
-                sh 'pip install --upgrade pip'
+                sh 'pip install --upgrade pip --user'
             }
         }
         stage('Test and Archive') {
