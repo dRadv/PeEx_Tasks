@@ -6,13 +6,13 @@ pipeline {
         } 
     }
     stages {
-        stage('Setup') {
+        stage('Stage1') {
             steps {
                 sh 'python --version'
-                sh 'echo "Step 2'
+                sh 'echo "Step 2"'
             }
         }
-        stage('Test and Archive') {
+        stage('Stage2') {
             steps {
                 sh 'echo "Running tests"'
                 sh 'python -c "print(\'Tests completed successfully\')"'
