@@ -9,12 +9,12 @@ pipeline {
         stage('Setup') {
             steps {
                 sh 'python --version'
-                sh 'pip install --upgrade pip --user'
+                sh 'echo "Step 2'
             }
         }
         stage('Test and Archive') {
             steps {
-                sh 'echo "Running tests..."'
+                sh 'echo "Running tests"'
                 sh 'python -c "print(\'Tests completed successfully\')"'
                 
                 sh 'mkdir output'
