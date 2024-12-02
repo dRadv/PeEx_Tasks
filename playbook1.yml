@@ -1,0 +1,72 @@
+---
+- name: Configure LVM and replace /var
+  hosts: servers
+  become: yes
+  vars:
+    new_disk: "/dev/sdc"
+    volume_group: "task1_vg"
+    logical_volume: "task1_lv"
+    mount_point: "/var"
+
+  tasks:
+    - name: Check if the disk is available
+      command: "lsblk {{ new_disk }}"
+      register: disk_check
+      failed_when: disk_check.rc != 0
+      changed_when: false
+
+    - name: Check if the volume group exists
+      command: "vgdisplay {{ volume_group }}"
+      register: vg_check
+      failed_when: vg_check.rc not in [0, 5]
+      changed_when: false
+
+    - name: Unmount the logical volume (if mounted)
+      command: "umount /dev/{{ volume_group }}/{{ logical_volume }}"
+      failed_when: vg_check.rc not in [0, 5]
+
+    - name: Remove logical volume (if exists)
+      command: "lvremove -f /dev/{{ volume_group }}/{{ logical_volume }}"
+      failed_when: vg_check.rc not in [0, 5]
+
+    - name: Remove volume group (if exists)
+      command: "vgremove -f {{ volume_group }}"
+      failed_when: vg_check.rc not in [0, 5]
+
+    - name: Remove any existing physical volume data
+      command: "pvremove -ff {{ new_disk }}"
+      when: new_disk not in disk_check.stdout
+
+    - name: Create a physical volume
+      command: "pvcreate {{ new_disk }}"
+      when: new_disk not in disk_check.stdout  
+
+    - name: Create a volume group
+      command: "vgcreate {{ volume_group }} {{ new_disk }}"
+
+    - name: Create a logical volume
+      shell: "lvcreate -L 4G -n {{ logical_volume }} {{ volume_group }} --yes"
+
+    - name: Format the logical volume
+      filesystem:
+        fstype: ext4
+        dev: "/dev/{{ volume_group }}/{{ logical_volume }}"
+
+    - name: Backup existing /var data
+      shell: "cp -rp /var /var_backup"
+
+    - name: Mount the new volume on /var
+      mount:
+        path: "{{ mount_point }}"
+        src: "/dev/{{ volume_group }}/{{ logical_volume }}"
+        fstype: ext4
+        opts: defaults
+        state: mounted
+
+    - name: Move backed-up data to new /var
+      command: "rsync -a /var_backup/ /var/"
+
+    - name: Clean up backup data
+      file:
+        path: /var_backup
+        state: absent
